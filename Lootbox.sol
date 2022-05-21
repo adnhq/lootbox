@@ -107,6 +107,7 @@ contract LootBox is Ownable {
     }
 
     /* |--- Private functions ---| */
+    
     /**
      * @dev Generates and returns a random index within the range of available rewards
      */
@@ -128,6 +129,7 @@ contract LootBox is Ownable {
     }
 
     /* |--- OWNER ONLY ---| */
+    
     /**
      * @notice Adds a new reward to the list of available rewards
      */
