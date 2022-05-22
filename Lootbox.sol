@@ -11,21 +11,22 @@ contract LootBox is Ownable {
     
     struct Reward { 
         //@notice Type of reward
-        Type rwdType;
+        Type rewardType;
 
         //@notice In case of ERC20 token reward, this field represents the amount of tokens. In case of NFT reward, it represents the token ID. 
-        uint256 amountOrId;
+        uint256 specifier;
     }
 
     enum Type { TOKEN0, NFT0, NFT1 }
 
     uint256 public fee;
+
     uint88 private _salt;
     address private _provider;
     bool public paused = false; 
 
-    IERC20 private constant _FEE_TOKEN = IERC20(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4);
-    IERC20 private constant _TOKEN0 = IERC20(0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2);
+    IERC20 private constant _TOKEN0 = IERC20(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4);
+    IERC20 private constant _FEE_TOKEN = IERC20(0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2);
     
     IERC721 private constant _NFT0 = IERC721(0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db);
     IERC721 private constant _NFT1 = IERC721(0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB);
@@ -39,21 +40,20 @@ contract LootBox is Ownable {
     }
     
     /**
-     * @param provider_ address which will provide the rewards
+     * @param _fee amount of fee tokens taken per spin
      * @param salt_ used to generate random index for reward
-     * @param _fee fee amount per spin
+     * @param provider_ address which will provide the rewards
      * @param initRewardList list of rewards available on contract deployment 
-     * NOTE: Provider must approve this contract for every reward before they can be claimed
      */
     constructor(
-        address provider_, 
-        uint88 salt_,
         uint256 _fee,
+        uint88 salt_,
+        address provider_, 
         Reward[] memory initRewardList
     ) {
+        fee = _fee;
         _provider = provider_;
         _salt = salt_;
-        fee = _fee;
         
         for(uint256 i; i < initRewardList.length; i++) 
             _rewardList.push(initRewardList[i]);
@@ -61,53 +61,53 @@ contract LootBox is Ownable {
     
     /**
      * @notice Spin once and win a reward
-     * Caller must not have any unclaimed rewards
+     * Caller must not have any unredeemed rewards
      * Contract must have rewards available
      */
     function spin() external notPaused {
-        require(_ownedRewards[msg.sender].amountOrId == 0, "LootBox: claim existing reward first"); 
+        require(_ownedRewards[msg.sender].specifier == 0, "LootBox: redeem existing reward first"); 
         require(_rewardList.length > 0, "LootBox: no rewards left");
-        uint256 idx = _random();
-        _ownedRewards[msg.sender] = _rewardList[idx];
-        _removeReward(idx);
+        uint256 rewardIndex = _random();
+        _ownedRewards[msg.sender] = _rewardList[rewardIndex];
+        _removeReward(rewardIndex);
 
         _FEE_TOKEN.safeTransferFrom(msg.sender, address(this), fee);
     }
 
     /**
-     * @notice Claim available reward
-     * @dev Reward transferred from provider to caller. 
-     * NOTE: Provider has to approve this contract to transfer the reward beforehand.
+     * @notice Redeem available reward
+     * @dev Reward transferred from _provider to caller. 
+     * NOTE: _provider must have approved this contract beforehand to transfer the reward.
      */
-    function claim() external notPaused {
+    function redeem() external notPaused {
         Reward memory reward = _ownedRewards[msg.sender];
-        require(reward.amountOrId != 0, "LootBox: no reward available");
+        require(reward.specifier != 0, "LootBox: no reward available");
         delete _ownedRewards[msg.sender];
 
-        if(reward.rwdType == Type.TOKEN0)
-            _TOKEN0.transferFrom(_provider, msg.sender, reward.amountOrId);
-        else if(reward.rwdType == Type.NFT0)
-            _NFT0.safeTransferFrom(_provider, msg.sender, reward.amountOrId);
+        if(reward.rewardType == Type.TOKEN0)
+            _TOKEN0.safeTransferFrom(_provider, msg.sender, reward.specifier);
+        else if(reward.rewardType == Type.NFT0)
+            _NFT0.safeTransferFrom(_provider, msg.sender, reward.specifier);
         else 
-            _NFT1.safeTransferFrom(_provider, msg.sender, reward.amountOrId);
+            _NFT1.safeTransferFrom(_provider, msg.sender, reward.specifier);
     }
 
     /**
-     * @notice Retrieves information about currently won yet unclaimed reward
+     * @notice Retrieves information about unredeemed reward of caller
      */
-    function getPendingRewardInfo() external view returns (Reward memory) {
+    function getMyRewardInfo() external view returns (Reward memory) {
         return _ownedRewards[msg.sender];
     }
 
     /**
-     * @notice Get total amount of rewards available to win
+     * @notice Retrieves total amount of rewards available to win
      */
-    function getRewardsLeft() external view returns (uint) {
+    function getTotalRewardsLeft() external view returns (uint256) {
         return _rewardList.length;
     }
 
     /* |--- Private functions ---| */
-    
+
     /**
      * @dev Generates and returns a random index within the range of available rewards
      */
@@ -118,23 +118,24 @@ contract LootBox is Ownable {
     /**
      * @dev Removes the reward at specified index and resizes reward list
      */
-    function _removeReward(uint idx) private {
-        require(idx < _rewardList.length);
+    function _removeReward(uint index) private {
         uint256 length = _rewardList.length;
-        if(1 < _rewardList.length && idx < length-1) 
-            _rewardList[idx] = _rewardList[length-1];
+        if(1 < _rewardList.length && index < length-1) 
+            _rewardList[index] = _rewardList[length-1];
         
         delete _rewardList[length-1];
         _rewardList.pop();
     }
 
     /* |--- OWNER ONLY ---| */
-    
+
     /**
-     * @notice Adds a new reward to the list of available rewards
+     * @notice Adds new rewards to the list of available rewards
+     * @param rewards list of new rewards to add
      */
-    function addReward(Reward calldata reward) external onlyOwner {
-        _rewardList.push(reward);
+    function addRewards(Reward[] calldata rewards) external onlyOwner {
+        for(uint i; i < rewards.length; i++)
+            _rewardList.push(rewards[i]);
     }
 
     /**
@@ -142,12 +143,21 @@ contract LootBox is Ownable {
      * @param index Index of reward to remove
      */
     function removeReward(uint256 index) external onlyOwner {
+        require(index < _rewardList.length, "LootBox: invalid index");
         _removeReward(index);
+    }
+
+    /**
+     * @notice Changes fee token
+     * @param feeToken_ New fee token address
+     */
+    function setFeeToken(address feeToken_) external onlyOwner {
+        _FEE_TOKEN = IERC20(feeToken_);
     }
     
     /**
-     * @notice Changes seed to be used for random index creation
-     * @param salt_ New seed to be used
+     * @notice Changes salt to be used for random index generation
+     * @param salt_ New salt to be used
      */
     function setSalt(uint88 salt_) external onlyOwner {
         _salt = salt_;
@@ -177,10 +187,10 @@ contract LootBox is Ownable {
     }
 
     /**
-     * @notice Transfers tokens accumulated from fees to the contract owner
+     * @notice Transfers accumulated fee tokens to the treasury
      */
     function withdraw() external onlyOwner {
-        _FEE_TOKEN.transfer(owner(), _FEE_TOKEN.balanceOf(address(this)));
+        _FEE_TOKEN.safeTransfer(owner(), _FEE_TOKEN.balanceOf(address(this)));
     }
 
     /**
