@@ -67,6 +67,7 @@ contract LootBox is Ownable {
     function spin() external notPaused {
         require(_ownedRewards[msg.sender].specifier == 0, "LootBox: redeem existing reward first"); 
         require(_rewardList.length > 0, "LootBox: no rewards left");
+        
         uint256 rewardIndex = _random();
         _ownedRewards[msg.sender] = _rewardList[rewardIndex];
         _removeReward(rewardIndex);
