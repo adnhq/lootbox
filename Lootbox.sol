@@ -128,7 +128,7 @@ contract LootBox is Ownable {
         _rewardList.pop();
     }
 
-    /* |--- OWNER ONLY ---| */
+    /* |--- ONLY OWNER ---| */
 
     /**
      * @notice Adds new rewards to the list of available rewards
