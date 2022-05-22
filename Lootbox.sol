@@ -119,7 +119,7 @@ contract LootBox is Ownable {
     /**
      * @dev Removes the reward at specified index and resizes reward list
      */
-    function _removeReward(uint index) private {
+    function _removeReward(uint256 index) private {
         uint256 length = _rewardList.length;
         if(1 < _rewardList.length && index < length-1) 
             _rewardList[index] = _rewardList[length-1];
