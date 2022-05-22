@@ -149,14 +149,6 @@ contract LootBox is Ownable {
     }
 
     /**
-     * @notice Changes fee token
-     * @param feeToken_ New fee token address
-     */
-    function setFeeToken(address feeToken_) external onlyOwner {
-        _FEE_TOKEN = IERC20(feeToken_);
-    }
-    
-    /**
      * @notice Changes salt to be used for random index generation
      * @param salt_ New salt to be used
      */
