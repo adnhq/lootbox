@@ -10,10 +10,10 @@ contract LootBox is Ownable {
     using SafeERC20 for IERC20;
     
     struct Reward { 
-        //@notice Type of reward
+        /// @notice Type of reward
         Type rewardType;
 
-        //@notice In case of ERC20 token reward, this field represents the amount of tokens. In case of NFT reward, it represents the token ID. 
+        /// @notice In case of ERC20 token reward, this field represents the amount of tokens. In case of NFT reward, it represents the token ID. 
         uint256 specifier;
     }
 
